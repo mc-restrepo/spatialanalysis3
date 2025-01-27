@@ -1,0 +1,207 @@
+---
+title: "Problem Set 1 - Geostatistics"
+author: "Maria Camila Restrepo"
+date: "2025-01-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Running Through an R Demonstration
+
+### Swiss Rainfall Data
+
+Explore the SIC dataset from the geoR package. This dataset contains 1000 observations of Swiss rainfall. 
+
+The Swiss rainfall data is called the SIC data because it was used in a Spatial Interpolation Comparison (SIC) project back in the late 1990's.
+
+```{r}
+if (!require(geoR)) install.packages("geoR")
+library(geoR)
+library(here)
+
+data(SIC)  # this loads the Swiss rainfall dataset from the geoR package into your workspace
+#? SIC # A description of the included data objects
+names(sic.all)  # component names in the sic.all geodataset
+
+# what are the dimensions of the coordinates component?
+dim(sic.all$coords)
+
+plot(sic.all$coords, pch = 16)
+# R by default plots the first column versus the second column when given a matrix. In case you didn't know, this the command below does the same thing, just with different axis labels.  Note I also changed the plotting symbol using pch to be a filled in circle.
+plot(sic.all$coords[, 1], sic.all$coords[, 2], pch = 16)
+# "[,1]" is shorthand for saying use all the rows and just the column 1. Similarly for "[,2]".
+plot(sic.all$coords[, "V2"], sic.all$coords[, "V3"], pch = 16)
+# "[, "V2"] can also be used to call the "V2" column by name instead of its index number. Similarly
+# for "[, "V3"]. Make sure not to forget the comma (the first object in square brackets refers to cells,
+# the second object refers to columns).
+
+summary(sic.all$data)
+
+points.geodata(sic.all,
+               pt.divide = "quartiles",
+               borders = sic.borders,
+               x.leg = 0,
+               y.leg = 290)
+
+hist(sic.all$data, nclass = 20, xlab = "Rainfall")
+
+plot(sic.all)  # look at the nice set of plots R produces for this spatial data
+
+# The plots in the top left and bottom right are self explanatory, although it would
+# be quite helpful to have a legend automatically provided with the top left plot. The
+# other two plots, top right and bottom left, are plotting the data versus each coordinate.
+# In the top right plot the data is actually on the x-axis and the Y Coordinate of the
+# aquifer points on the y-axis.  This is so you can connect to the plot to its immediate
+# left since the y-axes are the same.  Similarly for the plot in the bottom left.  The
+# x-axis for this one and the plot above it are the same.
+
+```
+
+Questions:
+
+**1. Do you think the rainfall measurements exhibit spatial dependence? Briefly explain
+ and provide a graphic to support your answer.**  
+ 
+ Yes, there is spatial dependence in the rainfall measurements. The semivariogram plot shows that the semivariance increases with distance, which is an indication of spatial dependence. The semivariogram plot is shown below.
+ 
+```{r}
+rain.vario <- variog(sic.all) # enter ?variog in the console to find out more about the object you created
+#?variog
+names(rain.vario)
+rain.vario$max.dist
+rain.vario <- variog(sic.all, max.dist = 335.7076 / 2) # Restricting to half the actual maximum distance
+plot(rain.vario)
+title("Semivariogram of Swiss Rainfall Data")
+
+```
+ 
+**b. Do you think the residuals from the linear model regressing the variable altitude (called elevation in class) on rainfall exhibit spatial dependence? Briefly explain and provide  a graphic to support your answer.**
+
+Yes, the residuals exhibit spatial dependence. After fitting the linear model, it is clear that altitude is a good predictor of rainfall. Additionally, the residuals are not randomly distributed around the zero line, which is an indication of spatial dependence. The plot of the residuals is shown below.
+
+```{r}
+rainfall <- sic.all$data
+altitude <- sic.all$covariate$altitude
+
+plot(altitude, rainfall, pch = 16)   # Is altitude a good predictor of rainfall?
+
+modelfit2 <- lm(rainfall ~ altitude) # Simple linear regression model with altitude regressed on rainfall
+
+summary(modelfit2)
+
+abline(modelfit2$coeff, lwd = 2, col = "red")
+
+plot(altitude, modelfit2$residuals) # Plot the residuals to check your linear regression assumptions and model fit
+abline(h = 0, lwd = 2, col = "blue")
+
+```
+
+**c. Do you think altitude accounted for much of the spatial variation in the rainfall measurements? Briefly explain.**
+
+Yes, altitude accounted for much of the spatial variation in rainfall. The linear model shows that altitude is a good predictor of rainfall, and the residuals exhibit spatial dependence. This indicates that altitude is an important factor in explaining the spatial variation in rainfall.
+
+**d. Using the set of commands provided suggest values for the range, partial sill, and nugget for a spherical semivariogram model drawn to the rainfall semivariogram estimates.  Provide the graph of the rainfall semivariogram estimates with the drawn in spherical function line as well.**
+
+```{r}
+# The package geoR requires to have its geostatistical dataset objects all conform to
+# a specific type and structure (class geodata), for example, coordinates, followed by data, etc.
+# So there is a function called as.geodata which makes this type of object.  The SIC data
+# was already internally saved as a geodata object.
+
+resid.geo <- as.geodata(cbind(sic.all$coords, modelfit2$residuals))
+names(resid.geo)
+
+plot.geodata(resid.geo)
+
+# The following command does the same thing, R is smart
+plot(resid.geo)
+
+# These next two commands do the same thing.  There is a special function
+# called points.geodata that just works on geodata objects.  But R is smart
+# and is an object oriented programming language so when we just use the points
+# command it sees that we gave as input a geodata object and so it knows to
+# internally call the points.geodata function.  The same thing happened above
+# when I used plot(sic.all) to really represent plot.geodata(sic.all)
+
+points.geodata(resid.geo, pt.divide = "quartiles", borders = sic.borders)
+points(resid.geo)  # R is smart
+lines(sic.borders) # Country boundary is provided with SIC
+
+resid.vario <- variog(resid.geo) # Creating a semivariogram for the
+
+resid.vario$max.dist	# Want to find the max inter-point distance
+
+resid.vario <- variog(resid.geo, max.dist = 335.7076 / 2)
+# re-estimate the variogram using half the max inter-point distance
+
+plot(resid.vario,
+     pch = 16,
+     xlab = "Distance (Km)",
+     ylab = "Semivariogram")
+title("Residual Semivariogram")
+
+par(mfrow = c(1, 2))		# set up the graphics window as a 1 by 2 matrix
+
+plot(rain.vario,
+     pch = 16,
+     xlab = "Distance (Km)",
+     ylab = "Semivariogram")
+title("Rainfall Semivariogram", cex = .3)
+plot(resid.vario,
+     pch = 16,
+     xlab = "Distance (Km)",
+     ylab = "Semivariogram")
+title("Residual Semivariogram", cex = .3)
+
+# Note the two plots look identical.  However, they are very close but not exactly the same.
+# Here is a way to see the actual estimates.
+
+temp <-data.frame(Distance = rain.vario$u,
+                  RainVario = rain.vario$v,
+                  ResidVario = resid.vario$v)
+
+temp # The newly created object temp
+
+# Do you think the variable altitude accounted for much of the spatial variation
+# in rainfall? Explain.
+
+par(mfrow = c(1, 1)) # Resets the plotting region to be for one graphic
+
+plot(temp$Distance, 
+     temp$RainVario, 
+     pch = 16, 
+     col = "black")
+points(temp$Distance,
+       temp$ResidVario,
+       pch = 1,
+       col = "blue")
+
+# Here are a set of commands to first "eyeball" a set of parameter estimates and then tell
+# R to draw that corresponding semivariogram function on the current plot.  Below I am
+# suggesting a spherical model with range of 85, partial sill of 14,000 and nugget of 1000.
+
+plot(rain.vario,
+     pch = 16,
+     xlab = "Distance (Km)",
+     ylab = "Semivariogram")
+title("Rainfall Semivariogram", cex = .3)
+rang <- 85
+psill <- 14000
+nug <- 1000
+lines.variomodel(cov.model = "spherical",
+                 cov.pars = c(psill, rang),
+                 nugget = nug,
+                 max,
+                 max.dist = 335.7076 / 2)
+
+# For practice change the values in the above set of commands for the range, partial sill, and nugget
+# (rang, psill, nug) to see the different lines that get drawn.  If you then run the commands starting
+# with "rang<-....." command then previous lines will remain on the plot.  Start from "plot(rain.vario..."
+# instead to make one clean version with your final decided upon model.
+
+
+```
+
