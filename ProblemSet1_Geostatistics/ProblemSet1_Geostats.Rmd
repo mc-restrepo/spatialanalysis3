@@ -62,8 +62,7 @@ plot(sic.all)  # look at the nice set of plots R produces for this spatial data
 
 Questions:
 
-**1. Do you think the rainfall measurements exhibit spatial dependence? Briefly explain
- and provide a graphic to support your answer.**  
+**a. Do you think the rainfall measurements exhibit spatial dependence? Briefly explain and provide a graphic to support your answer.**  
  
  Yes, there is spatial dependence in the rainfall measurements. The semivariogram plot shows that the semivariance increases with distance, which is an indication of spatial dependence. The semivariogram plot is shown below.
  
@@ -104,6 +103,7 @@ abline(h = 0, lwd = 2, col = "blue")
 Yes, altitude accounted for much of the spatial variation in rainfall. The linear model shows that altitude is a good predictor of rainfall, and the residuals exhibit spatial dependence. This indicates that altitude is an important factor in explaining the spatial variation in rainfall.
 
 **d. Using the set of commands provided suggest values for the range, partial sill, and nugget for a spherical semivariogram model drawn to the rainfall semivariogram estimates.  Provide the graph of the rainfall semivariogram estimates with the drawn in spherical function line as well.**
+
 
 ```{r}
 # The package geoR requires to have its geostatistical dataset objects all conform to
@@ -201,7 +201,6 @@ lines.variomodel(cov.model = "spherical",
 # (rang, psill, nug) to see the different lines that get drawn.  If you then run the commands starting
 # with "rang<-....." command then previous lines will remain on the plot.  Start from "plot(rain.vario..."
 # instead to make one clean version with your final decided upon model.
-
-
 ```
+
 
